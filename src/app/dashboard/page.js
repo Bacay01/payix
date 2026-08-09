@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { ActivityChart } from "@/components/dashboard/activity-chart";
+import { useModal } from "@/components/ui/modal-provider";
 
 async function gql(query, variables) {
   const res = await fetch("/api/graphql", {
@@ -73,11 +74,11 @@ function BankCard({ name, cardName, balance, last4, selected, onClick }) {
         </div>
 
         <div className="flex items-center justify-between font-mono text-sm tracking-[0.08em] sm:text-base sm:tracking-[0.14em]">
-      <span>4567</span>
-      <span>8896</span>
-      <span>5564</span>
-      <span>{last4}</span>
-    </div>
+          <span>4567</span>
+          <span>8896</span>
+          <span>5564</span>
+          <span>{last4}</span>
+        </div>
 
         <div className="flex items-end justify-between">
           <div>
@@ -95,6 +96,7 @@ function BankCard({ name, cardName, balance, last4, selected, onClick }) {
 }
 
 export default function DashboardPage() {
+  const { alert, prompt } = useModal();
   const [user, setUser] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -136,7 +138,7 @@ export default function DashboardPage() {
   }, [account?.id, accounts]);
 
   const handleAddCard = async () => {
-    const name = window.prompt("Name for the new card (e.g. Savings, Business):");
+    const name = await prompt("Name for the new card (e.g. Savings, Business):");
     if (!name) return;
     const data = await gql(
       `mutation($name: String) { createAccount(name: $name) { id } }`,
@@ -147,17 +149,17 @@ export default function DashboardPage() {
   };
 
   const handleTransaction = async (type) => {
-  if (account.frozen) {
-    alert(account.frozenReason ? `This card is frozen: ${account.frozenReason}` : "This card is frozen. Contact support to resolve this before continuing.");
-    return;
-  }
+    if (account.frozen) {
+      await alert(account.frozenReason ? `This card is frozen: ${account.frozenReason}` : "This card is frozen. Contact support to resolve this before continuing.");
+      return;
+    }
 
-  const label = type === "income" ? "Top up amount" : "Amount to send";
-  const raw = window.prompt(`${label} (USD):`);
-  if (!raw) return;
-  const amount = parseFloat(raw);
-  if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
-  if (type === "expense" && amount > account.balance) return alert("Insufficient balance.");
+    const label = type === "income" ? "Top up amount" : "Amount to send";
+    const raw = await prompt(`${label} (USD):`);
+    if (!raw) return;
+    const amount = parseFloat(raw);
+    if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
+    if (type === "expense" && amount > account.balance) return alert("Insufficient balance.");
 
     await gql(
       `mutation($input: CreateTransactionInput!) { createTransaction(input: $input) { id } }`,
@@ -176,13 +178,13 @@ export default function DashboardPage() {
 
   const handleSend = async () => {
     if (account.frozen) {
-      alert(account.frozenReason ? `This card is frozen: ${account.frozenReason}` : "This card is frozen. Contact support to resolve this before sending money.");
+      await alert(account.frozenReason ? `This card is frozen: ${account.frozenReason}` : "This card is frozen. Contact support to resolve this before sending money.");
       return;
     }
 
-    const toEmail = window.prompt("Recipient's Payix email:");
+    const toEmail = await prompt("Recipient's Payix email:");
     if (!toEmail) return;
-    const raw = window.prompt("Amount to send (USD):");
+    const raw = await prompt("Amount to send (USD):");
     if (!raw) return;
     const amount = parseFloat(raw);
     if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
@@ -193,9 +195,9 @@ export default function DashboardPage() {
         { input: { fromAccountId: account.id, toEmail, amount } }
       );
       await loadData(true);
-      alert(`Sent $${amount} to ${toEmail}`);
+      await alert(`Sent $${amount} to ${toEmail}`);
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 

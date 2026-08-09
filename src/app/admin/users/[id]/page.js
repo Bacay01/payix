@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/loader";
 import { cn } from "@/lib/utils";
+import { useModal } from "@/components/ui/modal-provider";
 
 async function gql(query, variables) {
   const res = await fetch("/api/graphql", {
@@ -21,9 +22,10 @@ async function gql(query, variables) {
 
 export default function AdminUserDetailPage() {
   const { id } = useParams();
+  const { alert, confirm, prompt } = useModal();
   const [user, setUser] = useState(null);
-const [transactions, setTransactions] = useState([]);
-const [notifications, setNotifications] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -48,14 +50,14 @@ const [notifications, setNotifications] = useState([]);
     );
     setTransactions(t.adminUserTransactions);
 
-const n = await gql(
-  `query($userId: ID!) { adminUserNotifications(userId: $userId) { id message read createdAt } }`,
-  { userId: id }
-);
-setNotifications(n.adminUserNotifications);
+    const n = await gql(
+      `query($userId: ID!) { adminUserNotifications(userId: $userId) { id message read createdAt } }`,
+      { userId: id }
+    );
+    setNotifications(n.adminUserNotifications);
   }, [id]);
-  
-useEffect(() => {
+
+  useEffect(() => {
     load()
       .catch((err) => {
         console.error("LOAD FAILED:", err.message);
@@ -65,7 +67,7 @@ useEffect(() => {
   }, [load]);
 
   const toggleFreeze = async (account) => {
-    const reason = window.prompt(
+    const reason = await prompt(
       `Reason for ${account.frozen ? "unfreezing" : "freezing"} "${account.name}" (recorded in the audit log):`
     );
     if (!reason) return;
@@ -78,21 +80,21 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const addTransaction = async (accountId) => {
-    const category = window.prompt("Entry name / category (e.g. Salary, Groceries):");
+    const category = await prompt("Entry name / category (e.g. Salary, Groceries):");
     if (!category) return;
-    const type = window.prompt('Type: "income", "expense", or "transfer":', "income");
+    const type = await prompt('Type: "income", "expense", or "transfer":', "income");
     if (!type || !["income", "expense", "transfer"].includes(type)) return alert("Type must be income, expense, or transfer.");
-    const raw = window.prompt("Amount:");
+    const raw = await prompt("Amount:");
     const amount = parseFloat(raw);
     if (isNaN(amount) || amount <= 0) return alert("Enter a valid positive amount.");
-    const description = window.prompt("Description (optional):") || "";
-    const dateStr = window.prompt("Date (YYYY-MM-DD):", new Date().toISOString().slice(0, 10));
-    const timeStr = window.prompt("Time (HH:MM, 24h):", new Date().toTimeString().slice(0, 5));
+    const description = (await prompt("Description (optional):")) || "";
+    const dateStr = await prompt("Date (YYYY-MM-DD):", new Date().toISOString().slice(0, 10));
+    const timeStr = await prompt("Time (HH:MM, 24h):", new Date().toTimeString().slice(0, 5));
     const occurredAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}:00`) : undefined;
     if (occurredAt && isNaN(occurredAt.getTime())) return alert("Invalid date/time.");
 
@@ -105,21 +107,21 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const editTransaction = async (tx) => {
     if (tx.frozen) return alert("This entry is frozen. Unfreeze it first.");
-    const category = window.prompt("Entry name / category:", tx.category);
+    const category = await prompt("Entry name / category:", tx.category);
     if (category === null) return;
-    const raw = window.prompt("Amount:", tx.amount);
+    const raw = await prompt("Amount:", tx.amount);
     const amount = parseFloat(raw);
     if (isNaN(amount) || amount <= 0) return alert("Enter a valid positive amount.");
-    const description = window.prompt("Description:", tx.description) ?? tx.description;
+    const description = (await prompt("Description:", tx.description)) ?? tx.description;
     const current = new Date(Number(tx.occurredAt) || tx.occurredAt);
-    const dateStr = window.prompt("Date (YYYY-MM-DD):", current.toISOString().slice(0, 10));
-    const timeStr = window.prompt("Time (HH:MM, 24h):", current.toTimeString().slice(0, 5));
+    const dateStr = await prompt("Date (YYYY-MM-DD):", current.toISOString().slice(0, 10));
+    const timeStr = await prompt("Time (HH:MM, 24h):", current.toTimeString().slice(0, 5));
     const occurredAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}:00`) : undefined;
     if (occurredAt && isNaN(occurredAt.getTime())) return alert("Invalid date/time.");
 
@@ -132,13 +134,13 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const deleteTransaction = async (tx) => {
     if (tx.frozen) return alert("This entry is frozen. Unfreeze it first.");
-    if (!window.confirm(`Delete "${tx.category}" ($${tx.amount})? This recalculates the account balance.`)) return;
+    if (!(await confirm(`Delete "${tx.category}" ($${tx.amount})? This recalculates the account balance.`))) return;
     try {
       await gql(
         `mutation($transactionId: ID!) { adminDeleteTransaction(transactionId: $transactionId) }`,
@@ -146,12 +148,12 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const toggleFreezeTransaction = async (tx) => {
-    const reason = window.prompt(
+    const reason = await prompt(
       `Reason for ${tx.frozen ? "unfreezing" : "freezing"} this entry (recorded in the audit log):`
     );
     if (!reason) return;
@@ -164,16 +166,16 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const seedBalance = async (account) => {
-    const raw = window.prompt("Test amount to apply (negative to debit):");
+    const raw = await prompt("Test amount to apply (negative to debit):");
     if (!raw) return;
     const amount = parseFloat(raw);
     if (isNaN(amount)) return alert("Enter a valid number.");
-    const note = window.prompt("Note (optional):") || "";
+    const note = (await prompt("Note (optional):")) || "";
     try {
       await gql(
         `mutation($accountId: ID!, $amount: Float!, $note: String) {
@@ -183,16 +185,16 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const setBalance = async (account) => {
-    const raw = window.prompt(`Set "${account.name}" balance to:`, account.balance);
+    const raw = await prompt(`Set "${account.name}" balance to:`, account.balance);
     if (raw === null) return;
     const target = parseFloat(raw);
     if (isNaN(target) || target < 0) return alert("Enter a valid amount.");
-    const note = window.prompt("Note (optional):") || "";
+    const note = (await prompt("Note (optional):")) || "";
     try {
       await gql(
         `mutation($accountId: ID!, $target: Float!, $note: String) {
@@ -202,12 +204,12 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const issueCard = async () => {
-    const name = window.prompt("Name for the new card:");
+    const name = await prompt("Name for the new card:");
     if (!name) return;
     try {
       await gql(
@@ -216,50 +218,50 @@ useEffect(() => {
       );
       await load();
     } catch (err) {
-      alert(err.message);
+      await alert(err.message);
     }
   };
 
   const sendNotification = async () => {
-  const message = window.prompt(`Notification message to send to ${user.name}:`);
-  if (!message) return;
-  try {
-    await gql(
-      `mutation($userId: ID!, $message: String!) { adminSendNotification(userId: $userId, message: $message) }`,
-      { userId: id, message }
-    );
-    await load();
-  } catch (err) {
-    alert(err.message);
-  }
-};
+    const message = await prompt(`Notification message to send to ${user.name}:`);
+    if (!message) return;
+    try {
+      await gql(
+        `mutation($userId: ID!, $message: String!) { adminSendNotification(userId: $userId, message: $message) }`,
+        { userId: id, message }
+      );
+      await load();
+    } catch (err) {
+      await alert(err.message);
+    }
+  };
 
-const editNotification = async (notif) => {
-  const message = window.prompt("Edit notification message:", notif.message);
-  if (!message) return;
-  try {
-    await gql(
-      `mutation($notificationId: ID!, $message: String!) { adminEditNotification(notificationId: $notificationId, message: $message) { id } }`,
-      { notificationId: notif.id, message }
-    );
-    await load();
-  } catch (err) {
-    alert(err.message);
-  }
-};
+  const editNotification = async (notif) => {
+    const message = await prompt("Edit notification message:", notif.message);
+    if (!message) return;
+    try {
+      await gql(
+        `mutation($notificationId: ID!, $message: String!) { adminEditNotification(notificationId: $notificationId, message: $message) { id } }`,
+        { notificationId: notif.id, message }
+      );
+      await load();
+    } catch (err) {
+      await alert(err.message);
+    }
+  };
 
-const deleteNotification = async (notif) => {
-  if (!window.confirm("Delete this notification?")) return;
-  try {
-    await gql(
-      `mutation($notificationId: ID!) { adminDeleteNotification(notificationId: $notificationId) }`,
-      { notificationId: notif.id }
-    );
-    await load();
-  } catch (err) {
-    alert(err.message);
-  }
-};
+  const deleteNotification = async (notif) => {
+    if (!(await confirm("Delete this notification?"))) return;
+    try {
+      await gql(
+        `mutation($notificationId: ID!) { adminDeleteNotification(notificationId: $notificationId) }`,
+        { notificationId: notif.id }
+      );
+      await load();
+    } catch (err) {
+      await alert(err.message);
+    }
+  };
 
   if (loading) return <PageLoader />;
   if (!user) return <PageLoader message="User not found" />;
@@ -303,40 +305,41 @@ const deleteNotification = async (notif) => {
               </div>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-  Profile details are owned by the user and edited from their own Profile page.
-</p>
-</div>
-
-<div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
-  <div className="flex flex-wrap items-center justify-between gap-2">
-    <p className="font-medium">Notifications</p>
-    <Button size="sm" variant="outline" onClick={sendNotification}>
-      Send notification
-    </Button>
-  </div>
-
-  {notifications.length === 0 ? (
-    <p className="mt-6 text-sm text-muted-foreground">No notifications.</p>
-  ) : (
-    <ul className="mt-4 divide-y divide-border">
-      {notifications.map((n) => (
-        <li key={n.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <div className="min-w-0">
-            <p className="text-sm">{n.message}</p>
-            <p className="text-xs text-muted-foreground">
-              {new Date(Number(n.createdAt) || n.createdAt).toLocaleString()} · {n.read ? "read" : "unread"}
+              Profile details are owned by the user and edited from their own Profile page.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => editNotification(n)}>Edit</Button>
-            <Button size="sm" variant="outline" onClick={() => deleteNotification(n)}>Delete</Button>
+
+          <div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">Notifications</p>
+              <Button size="sm" variant="outline" onClick={sendNotification}>
+                Send notification
+              </Button>
+            </div>
+
+            {notifications.length === 0 ? (
+              <p className="mt-6 text-sm text-muted-foreground">No notifications.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-border">
+                {notifications.map((n) => (
+                  <li key={n.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm">{n.message}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(Number(n.createdAt) || n.createdAt).toLocaleString()} · {n.read ? "read" : "unread"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => editNotification(n)}>Edit</Button>
+                      <Button size="sm" variant="outline" onClick={() => deleteNotification(n)}>Delete</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        </li>
-      ))}
-    </ul>
-  )}
-          </div>
-<div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
+
+          <div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">Cards</p>
               <Button size="sm" variant="outline" onClick={issueCard}>Issue new card</Button>
@@ -399,31 +402,31 @@ const deleteNotification = async (notif) => {
                 ) : (
                   <ul className="mt-4 divide-y divide-border">
                     {accTx.map((tx) => (
-                  <li key={tx.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-  <div className="min-w-0">
-    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-      {tx.category}
-      {tx.frozen && (
-        <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
-          FROZEN
-        </span>
-      )}
-    </p>
-    <p className="text-xs text-muted-foreground">
-      {tx.description || "—"} · {new Date(Number(tx.occurredAt) || tx.occurredAt).toLocaleString()}
-    </p>
-  </div>
-  <div className="flex flex-wrap items-center gap-2">
-    <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
-      {tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-    </span>
-    <Button size="sm" variant="outline" onClick={() => editTransaction(tx)}>Edit</Button>
-    <Button size="sm" variant={tx.frozen ? "primary" : "outline"} onClick={() => toggleFreezeTransaction(tx)}>
-      {tx.frozen ? "Unfreeze" : "Freeze"}
-    </Button>
-    <Button size="sm" variant="outline" onClick={() => deleteTransaction(tx)}>Delete</Button>
-  </div>
-</li>
+                      <li key={tx.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                            {tx.category}
+                            {tx.frozen && (
+                              <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
+                                FROZEN
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {tx.description || "—"} · {new Date(Number(tx.occurredAt) || tx.occurredAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
+                            {tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                          <Button size="sm" variant="outline" onClick={() => editTransaction(tx)}>Edit</Button>
+                          <Button size="sm" variant={tx.frozen ? "primary" : "outline"} onClick={() => toggleFreezeTransaction(tx)}>
+                            {tx.frozen ? "Unfreeze" : "Freeze"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => deleteTransaction(tx)}>Delete</Button>
+                        </div>
+                      </li>
                     ))}
                   </ul>
                 )}
