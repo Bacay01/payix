@@ -147,12 +147,17 @@ export default function DashboardPage() {
   };
 
   const handleTransaction = async (type) => {
-    const label = type === "income" ? "Top up amount" : "Amount to send";
-    const raw = window.prompt(`${label} (USD):`);
-    if (!raw) return;
-    const amount = parseFloat(raw);
-    if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
-    if (type === "expense" && amount > account.balance) return alert("Insufficient balance.");
+  if (account.frozen) {
+    alert(account.frozenReason ? `This card is frozen: ${account.frozenReason}` : "This card is frozen. Contact support to resolve this before continuing.");
+    return;
+  }
+
+  const label = type === "income" ? "Top up amount" : "Amount to send";
+  const raw = window.prompt(`${label} (USD):`);
+  if (!raw) return;
+  const amount = parseFloat(raw);
+  if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
+  if (type === "expense" && amount > account.balance) return alert("Insufficient balance.");
 
     await gql(
       `mutation($input: CreateTransactionInput!) { createTransaction(input: $input) { id } }`,

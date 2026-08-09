@@ -48,6 +48,7 @@ export const typeDefs = /* GraphQL */ `
     adminUserTransactions(userId: ID!): [Transaction!]!
     adminTickets: [SupportTicket!]!
     auditLog: [AuditEntry!]!
+    adminUserNotifications(userId: ID!): [Notification!]!
   }
 
   input SignUpInput {
@@ -93,6 +94,12 @@ export const typeDefs = /* GraphQL */ `
     adminEditTransaction(transactionId: ID!, type: String, category: String, amount: Float, description: String, occurredAt: String): Transaction!
     adminDeleteTransaction(transactionId: ID!): Boolean!
     adminSetTransactionFrozen(transactionId: ID!, frozen: Boolean!, reason: String!): Transaction!
+
+    
+
+    adminSendNotification(userId: ID!, message: String!): Boolean!
+adminEditNotification(notificationId: ID!, message: String!): Notification!
+adminDeleteNotification(notificationId: ID!): Boolean!
   }
 
   input SendMoneyInput {

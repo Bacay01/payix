@@ -22,7 +22,8 @@ async function gql(query, variables) {
 export default function AdminUserDetailPage() {
   const { id } = useParams();
   const [user, setUser] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+const [transactions, setTransactions] = useState([]);
+const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -46,11 +47,18 @@ export default function AdminUserDetailPage() {
       { userId: id }
     );
     setTransactions(t.adminUserTransactions);
-  }, [id]);
 
-  useEffect(() => {
+const n = await gql(
+  `query($userId: ID!) { adminUserNotifications(userId: $userId) { id message read createdAt } }`,
+  { userId: id }
+);
+setNotifications(n.adminUserNotifications);
+  }, [id]);
+  
+useEffect(() => {
     load()
       .catch((err) => {
+        console.error("LOAD FAILED:", err.message);
         window.location.href = err.message.includes("Admin") ? "/dashboard" : "/auth";
       })
       .finally(() => setLoading(false));
@@ -212,40 +220,82 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  const sendNotification = async () => {
+  const message = window.prompt(`Notification message to send to ${user.name}:`);
+  if (!message) return;
+  try {
+    await gql(
+      `mutation($userId: ID!, $message: String!) { adminSendNotification(userId: $userId, message: $message) }`,
+      { userId: id, message }
+    );
+    await load();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+const editNotification = async (notif) => {
+  const message = window.prompt("Edit notification message:", notif.message);
+  if (!message) return;
+  try {
+    await gql(
+      `mutation($notificationId: ID!, $message: String!) { adminEditNotification(notificationId: $notificationId, message: $message) { id } }`,
+      { notificationId: notif.id, message }
+    );
+    await load();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+const deleteNotification = async (notif) => {
+  if (!window.confirm("Delete this notification?")) return;
+  try {
+    await gql(
+      `mutation($notificationId: ID!) { adminDeleteNotification(notificationId: $notificationId) }`,
+      { notificationId: notif.id }
+    );
+    await load();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
   if (loading) return <PageLoader />;
   if (!user) return <PageLoader message="User not found" />;
 
   const joined = new Date(Number(user.createdAt) || user.createdAt);
 
   return (
-    <div className="flex min-h-screen bg-secondary/40">
+    <div className="flex min-h-screen overflow-x-hidden bg-secondary/40">
       <AdminSidebar />
 
-      <div className="flex-1">
-        <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
-          <div className="flex items-center gap-2 text-sm">
-            <a href="/admin" className="text-muted-foreground hover:text-foreground">Users</a>
-            <span className="text-muted-foreground">/</span>
-            <span className="font-medium">{user.name}</span>
+      <div className="min-w-0 flex-1">
+        <header className="flex h-16 items-center justify-between gap-3 border-b border-border bg-background px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <a href="/admin" className="shrink-0 text-muted-foreground hover:text-foreground">Users</a>
+            <span className="shrink-0 text-muted-foreground">/</span>
+            <span className="truncate font-medium">{user.name}</span>
           </div>
           <ThemeToggle />
         </header>
 
-        <main className="mx-auto max-w-4xl space-y-6 p-6">
-          <div className="rounded-2xl border border-border bg-background p-6 shadow-card">
-            <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/20 text-lg font-semibold text-accent">
+        <main className="mx-auto min-w-0 max-w-4xl space-y-6 p-4 pb-28 sm:p-6 lg:pb-6">
+          {/* Identity — read only */}
+          <div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent/20 text-lg font-semibold text-accent">
                 {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
               </span>
-              <div>
-                <p className="text-lg font-semibold">{user.name}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold">{user.name}</p>
+                <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {user.accountType} · role: {user.role}
                   {!isNaN(joined) && <> · joined {joined.toLocaleDateString()}</>}
                 </p>
               </div>
-              <div className="ml-auto text-right">
+              <div className="sm:ml-auto sm:text-right">
                 <p className="text-xs text-muted-foreground">Total balance</p>
                 <p className="text-2xl font-semibold">
                   ${user.totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -253,24 +303,53 @@ export default function AdminUserDetailPage() {
               </div>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Profile details are owned by the user and edited from their own Profile page.
+  Profile details are owned by the user and edited from their own Profile page.
+</p>
+</div>
+
+<div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <p className="font-medium">Notifications</p>
+    <Button size="sm" variant="outline" onClick={sendNotification}>
+      Send notification
+    </Button>
+  </div>
+
+  {notifications.length === 0 ? (
+    <p className="mt-6 text-sm text-muted-foreground">No notifications.</p>
+  ) : (
+    <ul className="mt-4 divide-y divide-border">
+      {notifications.map((n) => (
+        <li key={n.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div className="min-w-0">
+            <p className="text-sm">{n.message}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(Number(n.createdAt) || n.createdAt).toLocaleString()} · {n.read ? "read" : "unread"}
             </p>
           </div>
-
-          <div className="rounded-2xl border border-border bg-background p-6 shadow-card">
-            <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => editNotification(n)}>Edit</Button>
+            <Button size="sm" variant="outline" onClick={() => deleteNotification(n)}>Delete</Button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+          </div>
+<div className="rounded-2xl border border-border bg-background p-4 shadow-card sm:p-6">
+            <div className="flex items-center justify-between gap-2">
               <p className="font-medium">Cards</p>
               <Button size="sm" variant="outline" onClick={issueCard}>Issue new card</Button>
             </div>
 
             <ul className="mt-4 divide-y divide-border">
               {user.accounts.map((acc) => (
-                <li key={acc.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <div>
+                <li key={acc.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="flex items-center gap-2 text-sm font-medium">
-                      {acc.name}
+                      <span className="truncate">{acc.name}</span>
                       {acc.frozen && (
-                        <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
+                        <span className="shrink-0 rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
                           FROZEN
                         </span>
                       )}
@@ -279,7 +358,7 @@ export default function AdminUserDetailPage() {
                       •••• {String(acc.id).slice(-4)} · ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })} {acc.currency}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:flex">
                     <Button size="sm" variant="outline" onClick={() => setBalance(acc)}>
                       Set balance
                     </Button>
@@ -320,31 +399,31 @@ export default function AdminUserDetailPage() {
                 ) : (
                   <ul className="mt-4 divide-y divide-border">
                     {accTx.map((tx) => (
-                      <li key={tx.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                        <div>
-                          <p className="flex items-center gap-2 text-sm font-medium">
-                            {tx.category}
-                            {tx.frozen && (
-                              <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
-                                FROZEN
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {tx.description || "—"} · {new Date(Number(tx.occurredAt) || tx.occurredAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
-                            {tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                          <Button size="sm" variant="outline" onClick={() => editTransaction(tx)}>Edit</Button>
-                          <Button size="sm" variant={tx.frozen ? "primary" : "outline"} onClick={() => toggleFreezeTransaction(tx)}>
-                            {tx.frozen ? "Unfreeze" : "Freeze"}
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => deleteTransaction(tx)}>Delete</Button>
-                        </div>
-                      </li>
+                  <li key={tx.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+  <div className="min-w-0">
+    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+      {tx.category}
+      {tx.frozen && (
+        <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-semibold text-danger">
+          FROZEN
+        </span>
+      )}
+    </p>
+    <p className="text-xs text-muted-foreground">
+      {tx.description || "—"} · {new Date(Number(tx.occurredAt) || tx.occurredAt).toLocaleString()}
+    </p>
+  </div>
+  <div className="flex flex-wrap items-center gap-2">
+    <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
+      {tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+    </span>
+    <Button size="sm" variant="outline" onClick={() => editTransaction(tx)}>Edit</Button>
+    <Button size="sm" variant={tx.frozen ? "primary" : "outline"} onClick={() => toggleFreezeTransaction(tx)}>
+      {tx.frozen ? "Unfreeze" : "Freeze"}
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => deleteTransaction(tx)}>Delete</Button>
+  </div>
+</li>
                     ))}
                   </ul>
                 )}

@@ -161,6 +161,11 @@ export const resolvers = {
         .limit(100);
     },
 
+    adminUserNotifications: async (_, { userId }) => {
+  await requireAdmin();
+  return Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(100);
+},
+
     adminTickets: async () => {
       await requireAdmin();
       return SupportTicket.find().sort({ createdAt: -1 }).limit(100);
@@ -170,6 +175,8 @@ export const resolvers = {
       await requireAdmin();
       return AuditLog.find().sort({ createdAt: -1 }).limit(100);
     },
+
+
   },
 
   Mutation: {
@@ -531,5 +538,66 @@ export const resolvers = {
 
       return tx;
     },
+
+    adminSendNotification: async (_, { userId, message }) => {
+  const admin = await requireAdmin();
+  if (!message.trim()) throw new Error("Message can't be empty.");
+
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  await Notification.create({
+    user: userId,
+    message: message.trim(),
+  });
+
+  await audit(admin, "SEND_NOTIFICATION", userId, message.trim());
+
+  return true;
+},
+
+adminSendNotification: async (_, { userId, message }) => {
+  const admin = await requireAdmin();
+  if (!message.trim()) throw new Error("Message can't be empty.");
+
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  await Notification.create({
+    user: userId,
+    message: message.trim(),
+  });
+
+  await audit(admin, "SEND_NOTIFICATION", userId, message.trim());
+
+  return true;
+},
+
+adminEditNotification: async (_, { notificationId, message }) => {
+  const admin = await requireAdmin();
+  if (!message.trim()) throw new Error("Message can't be empty.");
+
+  const notif = await Notification.findById(notificationId);
+  if (!notif) throw new Error("Notification not found");
+
+  notif.message = message.trim();
+  await notif.save();
+
+  await audit(admin, "EDIT_NOTIFICATION", notif.user, message.trim());
+
+  return notif;
+},
+
+adminDeleteNotification: async (_, { notificationId }) => {
+  const admin = await requireAdmin();
+
+  const notif = await Notification.findById(notificationId);
+  if (!notif) throw new Error("Notification not found");
+
+  await Notification.findByIdAndDelete(notificationId);
+  await audit(admin, "DELETE_NOTIFICATION", notif.user, notif.message);
+
+  return true;
+},
   },
 };
