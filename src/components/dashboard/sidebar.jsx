@@ -30,11 +30,9 @@ export function Sidebar() {
       {/* Desktop sidebar */}
       <aside className="sidebar-gradient hidden w-60 flex-col p-5 text-white lg:flex">
         <a href="/" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-            <CircleDot size={18} />
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Payix Bank</span>
-        </a>
+  <img src="/mainlogo.png" alt="Payix" className="h-9 w-9 rounded-full object-cover" />
+  <span className="text-lg font-semibold tracking-tight">Payix Bank</span>
+</a>
 
         <nav className="mt-12 flex flex-1 flex-col gap-1.5">
           {navItems.map((item) => {

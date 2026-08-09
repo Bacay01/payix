@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { CircleDot, Users, LifeBuoy, Home, LogOut } from "@/components/icons";
+import { Users, LifeBuoy, Home, LogOut } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -26,14 +26,12 @@ export function AdminSidebar() {
     <>
       <aside className="hidden w-60 flex-col bg-primary p-5 text-primary-foreground lg:flex">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-            <CircleDot size={18} />
-          </span>
-          <div>
-            <p className="text-sm font-semibold tracking-tight">Payix</p>
-            <p className="text-[10px] uppercase tracking-wider opacity-60">Admin console</p>
-          </div>
-        </div>
+  <img src="/mainlogo.png" alt="Payix" className="h-9 w-9 rounded-full object-cover" />
+  <div>
+    <p className="text-sm font-semibold tracking-tight">Payix</p>
+    <p className="text-[10px] uppercase tracking-wider opacity-60">Admin console</p>
+  </div>
+</div>
 
         <nav className="mt-12 flex flex-1 flex-col gap-1.5">
           {navItems.map((item) => {

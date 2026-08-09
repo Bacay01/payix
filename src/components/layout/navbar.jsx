@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CircleDot, Menu, X } from "@/components/icons";
+import { Menu, X } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +19,9 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         <a href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <CircleDot size={16} />
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Payix</span>
-        </a>
+  <img src="/mainlogo.png" alt="Payix" className="h-8 w-8 rounded-full object-cover" />
+  <span className="text-lg font-semibold tracking-tight">Payix</span>
+</a>
 
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (

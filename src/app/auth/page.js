@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { CircleDot } from "@/components/icons";
 import { AuthForm } from "@/components/auth/auth-form";
 
 
@@ -14,11 +13,9 @@ export default function AuthPage() {
       {/* Left: form */}
       <div className="flex flex-col px-6 py-8">
         <a href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <CircleDot size={16} />
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Payix</span>
-        </a>
+  <img src="/mainlogo.png" alt="Payix" className="h-8 w-8 rounded-full object-cover" />
+  <span className="text-lg font-semibold tracking-tight">Payix</span>
+</a>
 
         <div className="flex flex-1 items-center justify-center py-12">
           <AuthForm />
