@@ -359,7 +359,7 @@ export default function DashboardPage() {
                               </p>
                             </div>
                           </div>
-                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
+                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-danger")}>
                             {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         </li>

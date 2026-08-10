@@ -36,7 +36,7 @@ export default function AdminUsersPage() {
       );
       setUsers(d.adminUsers);
     } catch (err) {
-        console.error("adminUsers failed:", err.message);
+        
       if (err.message.includes("authenticated")) {
         
         window.location.href = "/auth";

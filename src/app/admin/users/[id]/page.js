@@ -417,7 +417,7 @@ export default function AdminUserDetailPage() {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-foreground")}>
+                          <span className={cn("text-sm font-semibold", tx.type === "income" ? "text-success" : "text-danger")}>
                             {tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                           <Button size="sm" variant="outline" onClick={() => editTransaction(tx)}>Edit</Button>
